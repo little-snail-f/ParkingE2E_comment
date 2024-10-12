@@ -1,7 +1,9 @@
+# 预训练模型的检查点文件路径
 model_ckpt_path: "./ckpt/pretrained_model.ckpt"
 training_config: "training_real"
 predict_mode: "topic"
 
+# 轨迹发布的频率
 trajectory_pub_frequency: 1
 cam_info_dir: "./utils"
 progress_threshold: 0.97

@@ -9,11 +9,11 @@ By collecting a large number of expert parking trajectory data and emulating hum
 We employ imitation learning to perform end-to-end planning from RGB images to path planning by imitating human driving trajectories.
 The proposed end-to-end approach utilizes a target query encoder to fuse images and target features, and a transformer-based decoder to autoregressively predict future waypoints.
 
-**Video:**
+**视频:**
 
 <img src="resource/video_show.gif" height="250">
 
-Supplementary video material is available at: [\[Link\]](https://youtu.be/urOEHJH1TBQ).
+补充视频资料可在以下网址获得： [\[Link\]](https://youtu.be/urOEHJH1TBQ).
 
 **Related Papers:**
 
@@ -22,7 +22,7 @@ Supplementary video material is available at: [\[Link\]](https://youtu.be/urOEHJ
 - Yunfan Yang, Denglon Chen, Tong Qin, Xiangru Mu, Chunjing Xu, Ming Yang. "E2E Parking: Autonomous Parking by the End-to-end Neural Network on the CARLA Simulator." 2024 IEEE Intelligent Vehicles Symposium (IV). IEEE, 2024. [\[Link\]](https://ieeexplore.ieee.org/abstract/document/10588551)
 
 
-## 1. Prerequisites
+## 1. 先决条件
 Ubuntu 20.04, CUDA, ROS Noetic and OpenCV 4.
 
 
@@ -48,26 +48,26 @@ source devel/setup.bash
 ```
 
 
-## 3. Run
+## 3. 运行
 
-#### Download pretrained model and test data:
-Firstly, you should download the [pretrained model](https://drive.google.com/file/d/1rZ4cmgXOUFgJDLFdnvAI6voU9ZkhsmYV/view?usp=drive_link) and [test data](https://drive.google.com/file/d/11kA-srYa6S30OqyCdyg3jGNZxBMsUHYC/view?usp=drive_link). Then, you need to modify inference config `model_ckpt_path` in `./config/inference_real.yaml`.
+#### 下载预训练模型和测试数据:
+首先，您需要下载[预训练模型](https://drive.google.com/file/d/1rZ4cmgXOUFgJDLFdnvAI6voU9ZkhsmYV/view?usp=drive_link) and [测试数据](https://drive.google.com/file/d/11kA-srYa6S30OqyCdyg3jGNZxBMsUHYC/view?usp=drive_link). 然后，您需要修改`./config/inference_real.yaml`中的推理配置 `model_ckpt_path`。
 
-#### Run driven program:
+#### 运行驱动程序:
 ```Shell
 roslaunch core driven_core.launch
 ```
 
-When the command is executed for the first time, a progress bar will appear (used to calculate the distortion map). After the four (fisheye camera) progress bars are completed, subsequent operations can be carried out.
+首次执行该命令时会出现进度条（用于计算畸变图），待四个（鱼眼相机）进度条完成后，即可进行后续操作。
 
-#### Start inference using E2E algorithm:
+#### 使用 E2E 算法开始推理:
 ```shell
 conda activate ParkingE2E
 python ros_inference.py
 ```
-When the command is executed for the first time, the `EfficientNet` pretrained model will be downloaded.
+第一次执行该命令时，EfficientNet将下载预先训练的模型。
 
-#### Run test demo:
+#### 运行测试demo:
 ```shell
 unzip demo_scene.zip
 cd demo_scene
@@ -79,20 +79,20 @@ In rviz, you can also select the parking trarget using `2D nav goal` on the rviz
 
 <img src="resource/demo.gif" height="250">
 
-## 4. Train
-We provide the [demo rosbag](https://drive.google.com/file/d/1jIG1iRMeW9XXdWP7eEJKnZP1gC0xvG7o/view?usp=drive_link) to create a mini dataset and train a model.
-#### Generate dataset
-First, you need to create a dataset.
+## 4. 训练
+我们提供[demo rosbag](https://drive.google.com/file/d/1jIG1iRMeW9XXdWP7eEJKnZP1gC0xvG7o/view?usp=drive_link)来创建一个迷你数据集并训练一个模型。
+#### 生成数据集
+首先，您需要创建一个数据集。
 ```
 python toolkit/dataset_generation.py --bag_file_path ${DEMO_BAG_PATH} --output_folder_path ./e2e_dataset
 ```
-If you use your own rosbag, please confirm the rosbag topic in `./catkin_ws/src/core/config/params.yaml` and modify the camera configuration.
+如果你使用自己的rosbag，请确认 `./catkin_ws/src/core/config/params.yaml` 中的rosbag主题，并修改相机配置。
 
-#### Train your model
+#### 训练你的模型
 ```Shell
 python train.py --config ./config/training_real.yaml
 ```
-You can modify the training configuration in `./config/training_real.yaml`.
+您可以在 `./config/training_real.yaml` 中修改训练配置。
 
 
 ## 5. License

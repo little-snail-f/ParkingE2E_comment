@@ -1,9 +1,12 @@
+# Anaconda环境创建
 name: ParkingE2E
+# 安装依赖包的渠道
 channels:
     - conda-forge
     - pytorch
     - nvidia
     - defaults
+# 该环境所需的依赖包及其版本
 dependencies:
     - cryptography=38.0.2=py37h38fbfac_1
     - cuda-cudart=11.7.99=0
@@ -28,6 +31,7 @@ dependencies:
     - typing_extensions=4.3.0=py37h06a4308_0
     - urllib3=1.26.14=py37h06a4308_0
     - wheel=0.38.4=py37h06a4308_0
+    # 通过pip安装的额外依赖包
     - pip:
           - click==8.1.7
           - efficientnet-pytorch==0.7.1
