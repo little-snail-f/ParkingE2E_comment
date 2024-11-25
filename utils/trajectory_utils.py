@@ -29,11 +29,15 @@ def tokenize_traj_point(x, y, progress, token_nums, xy_max, progress_bar=1):
     return [int(x_normalize * valid_token), int(y_normalize * valid_token), int(progress_normalize * valid_token)]
 
 
+# 将 token 形式的轨迹点转换为实际的坐标值
 def detokenize_traj_point(torch_list: torch.tensor, token_nums, item_num, xy_max=10, progress_max=1):
+    # 有效的标记数量
     valid_token = token_nums - 1
-
+    # 调整输入张量形状为(batch_size, item_num)   2
     torch_list_process = torch_list.view(-1, item_num)
+    # 初始化返回张量
     ret_tensor = torch.zeros_like(torch_list_process, dtype=torch.float32)
+    # 计算坐标值
     ret_tensor[:, :2] = (torch_list_process[:, :2] / valid_token) * 2 * xy_max - xy_max
     if (item_num > 2):
         ret_tensor[:, 2:] = (torch_list_process[:, 2:] / valid_token) * 2 * progress_max - progress_max

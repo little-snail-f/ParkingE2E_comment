@@ -11,18 +11,22 @@
 #include <tf/transform_datatypes.h>
 
 
+// 用于计算图像的缩放因子
 double sizeSq = 1080 / (108 / 2);
 
+// 车辆位置信息和朝向
 double vehicle_x = 0.0;
 double vehicle_y = 0.0;
 double vehicle_z = 0.0;
 double vehicle_yaw = 0.0;
 
-
+// 存储当前接收到的图像，指示是否接收到新图像
 cv::Mat current_image;
 bool new_image_received = false;
 
 
+// 图像回调函数
+// 使用 cv_bridge 将 ROS 图像消息转换为 OpenCV 格式，并将其存储在 current_image 中
 void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
     try
     {
@@ -39,6 +43,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg) {
 }
 
 
+// 位姿回调函数
+// 更新车辆的位置和朝向信息，使用 tf 库获取车辆的偏航角
 void posecallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
     vehicle_x = msg->pose.position.x;
     vehicle_y = msg->pose.position.y;
@@ -48,6 +54,8 @@ void posecallback(const geometry_msgs::PoseStamped::ConstPtr& msg){
 }
 
 
+// 2D 变换函数
+// 对 2D 坐标进行旋转
 std::pair<double, double> rotation_2d(std::pair<double, double> coordinate, double rotation_angle)
 {
     double x_trans = coordinate.first * cos(rotation_angle) - coordinate.second * sin(rotation_angle);
@@ -56,6 +64,7 @@ std::pair<double, double> rotation_2d(std::pair<double, double> coordinate, doub
     return std::pair<double, double>(x_trans, y_trans);
 }
 
+// 对 2D 坐标进行缩放
 std::pair<double, double> scale_2d(std::pair<double, double> coordinate, double scale)
 {
     double x_trans = coordinate.first * scale;
@@ -63,6 +72,7 @@ std::pair<double, double> scale_2d(std::pair<double, double> coordinate, double 
     return std::pair<double, double>(x_trans, y_trans);
 }
 
+// 对 2D 坐标进行偏移
 std::pair<double, double> bias_2d(std::pair<double, double> coordinate, std::pair<double, double> bias)
 {
     double x_trans = coordinate.first + bias.first;
@@ -71,6 +81,7 @@ std::pair<double, double> bias_2d(std::pair<double, double> coordinate, std::pai
 }
 
 
+// 将像素坐标转换为 RViz 中的坐标，应用缩放、旋转和偏移
 geometry_msgs::Point pix2rviz(std::pair<double, double> raw_pixel, double scale, double rotation, std::pair<double, double> bias)
 {
     std::pair<double, double> scale_point = scale_2d(raw_pixel, scale);
@@ -86,6 +97,9 @@ geometry_msgs::Point pix2rviz(std::pair<double, double> raw_pixel, double scale,
 
 
 
+// 主函数
+// 初始化 ROS 节点和相关的发布者、订阅者
+// 创建一个 visualization_msgs::Marker 对象，用于在 RViz 中显示图像数据
 int main(int argc, char** argv)
 {
     ROS_INFO("Image to RViz node started");
@@ -115,6 +129,10 @@ int main(int argc, char** argv)
     geometry_msgs::Point p;
     std_msgs::ColorRGBA crgb;
 
+    // 图像处理循环
+    // 检查是否接收到新图像，如果接收到，则进行处理。
+    // 遍历图像的每个像素，计算其在 RViz 中的坐标，并将其添加到标记中。
+    // 使用 cv::Vec3b 获取当前像素的颜色，并将其转换为 RViz 中的颜色格式。
     while (ros::ok())
     {
         if (new_image_received && !current_image.empty()) {

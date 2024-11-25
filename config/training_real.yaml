@@ -1,16 +1,16 @@
-##################### Dataset Options #####################
-data_dir: './e2e_dataset/'
-training_dir: "train"
-validation_dir: "val"
+##################### 数据集 Options #####################
+data_dir: './e2e_dataset/'  # 数据集的根目录
+training_dir: "train"       # 训练数据的子目录
+validation_dir: "val"       # 验证数据的子目录
 
 ##################### Basic Options #####################
-data_mode: "real_scene"
+data_mode: "real_scene"         # 数据模式，可能指的是使用真实场景数据
 num_gpus: 1
 cuda_device_index: "0"
 log_root_dir: './log/'
 checkpoint_root_dir: './ckpt'
 log_every_n_steps: 10
-check_val_every_n_epoch: 5
+check_val_every_n_epoch: 5      # 每 5 个 epoch 进行一次验证
 epochs: 40
 learning_rate: 0.0001
 weight_decay: 0.00001
@@ -21,7 +21,7 @@ num_workers: 8
 ##################### Data Process #####################
 autoregressive_points: 30
 traj_downsample_stride: 3
-item_number: 2
+item_number: 2            # 轨迹点维度[x, y]
 token_nums: 1200
 append_token: 3
 xy_max: 12

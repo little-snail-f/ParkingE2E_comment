@@ -1,12 +1,20 @@
 <launch>
+  <!-- 启动 Nodelet 管理器 -->
+  <!-- Nodelet 是一种轻量级的 ROS 节点，它允许在同一进程中运行多个节点。 -->
+  <!-- 与传统的 ROS 节点相比，Nodelet 通过共享内存来减少节点间的通信延迟和开销 -->
+  <!-- 常用于摄像头信息传输 -->
   <node pkg="nodelet" type="nodelet" name="nodelet_manager"  args="manager" output="screen"/>
   <param name="avm_pixel_per_meter" value='108'/>
+  <!-- 加载名为 avm_nodelet 的 Nodelet，注册到 nodelet_manager 中 -->
   <node pkg="nodelet" type="nodelet" name="avm_nodelet" args="load fisheye_avm/avm_nodelet nodelet_manager" output="screen">        
+    <!-- 参数设置 -->
     <param name="back_param" value="$(find core)/config/back.yaml"/>
     <param name="front_param" value="$(find core)/config/front.yaml"/>
     <param name="left_param" value="$(find core)/config/left.yaml"/>
     <param name="right_param" value="$(find core)/config/right.yaml"/>
+    <!-- 输出话题 -->
     <param name="output_topic" value="/driver/fisheye/avm"/>
+    <!-- 输出图像的尺寸 -->
     <param name="output_width" value="1080"/>
     <param name="output_height" value="1080"/>
     <param name="output_scale" value="2.0"/>

@@ -24,6 +24,7 @@ class FisheyeAVM {
 
   cv::Mat operator()(const std::vector<cv::Mat> &imgs) const;
 
+  // 设置输出图像的分辨率
   void set_output_resolution(const cv::Size2i &s) {
     output_width = s.width;
     output_height = s.height;

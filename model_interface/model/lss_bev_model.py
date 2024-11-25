@@ -42,23 +42,32 @@ class LssBevModel(nn.Module):
 
         return nn.Parameter(frustum, requires_grad=False)
 
+    # 根据相机的内参和外参计算视锥体中的点在世界坐标系中的位置
     def get_geometry(self, intrinsics, extrinsics):
+        # 外参的逆，以便将世界坐标系转换为相机坐标系
         extrinsics = torch.inverse(extrinsics).cuda()
         rotation, translation = extrinsics[..., :3, :3], extrinsics[..., :3, 3]
+        # b:批次大小 n:每个批次中的相机数量
         b, n, _ = translation.shape
 
+        # 生成视锥体点
         points = self.frustum.unsqueeze(0).unsqueeze(0).unsqueeze(-1)
         points = torch.cat((points[:, :, :, :, :, :2] * points[:, :, :, :, :, 2:3],
                             points[:, :, :, :, :, 2:3]), 5)
+        
         combine_transform = rotation.matmul(torch.inverse(intrinsics)).cuda()
         points = combine_transform.view(b, n, 1, 1, 1, 3, 3).matmul(points).squeeze(-1)
         points += translation.view(b, n, 1, 1, 1, 3)
 
+        # 返回计算得到的三维点，表示视锥体中的每个点在世界坐标系中的位置
         return points
 
+    # 对输入图像进行编码，提取特征，并计算深度信息
     def encoder_forward(self, images):
-        b, n, c, h, w = images.shape
+        b, n, c, h, w = images.shape    # (1, 4, C, H, W) （批次大小，每个批次中的图像数量，图像通道数，高度，宽度）
+        # 将所有图像合并为一个批次
         images = images.view(b * n, c, h, w)
+        # 提取的特征，深度信息
         x, depth = self.cam_encoder(images)
 
         depth_prob = None
@@ -107,17 +116,22 @@ class LssBevModel(nn.Module):
 
         return output
 
+    # 计算 BEV 特征和预测深度
     def calc_bev_feature(self, images, intrinsics, extrinsics):
+        # 计算视锥体中的点在世界坐标系中的位置
         geom = self.get_geometry(intrinsics, extrinsics)
+        # 
         x, pred_depth = self.encoder_forward(images)
         bev_feature = self.proj_bev_feature(geom, x)
         return bev_feature, pred_depth
 
+    # 根据输入的图像、内参和外参，计算 BEV 特征和预测深度
     def forward(self, images, intrinsics, extrinsics):
         bev_feature, pred_depth = self.calc_bev_feature(images, intrinsics, extrinsics)
         return bev_feature.squeeze(1), pred_depth
 
 
+# CamEncoder 类：用于处理相机图像并提取特征和深度信息
 class CamEncoder(nn.Module):
     def __init__(self, cfg, D):
         super().__init__()
@@ -170,11 +184,15 @@ class CamEncoder(nn.Module):
         del self.backbone._dropout
         del self.backbone._fc
 
+    # 提取特征和深度信息（使用 EfficientNet 作为主干网络，旨在解决深度学习模型在准确性和计算效率之间的权衡）
+    # x: 输入图像，(4, c, h, w)
     def get_features_depth(self, x):
         # Adapted from https://github.com/lukemelas/EfficientNet-PyTorch/blob/master/efficientnet_pytorch/model.py#L231
         endpoints = dict()
 
         # Stem
+        # 使用 EfficientNet 的初始卷积层（_conv_stem）处理输入图像 x
+        # 并通过批归一化（_bn0）和 Swish 激活函数（_swish）进行处理
         x = self.backbone._swish(self.backbone._bn0(self.backbone._conv_stem(x)))
         prev_x = x
 
@@ -212,6 +230,7 @@ class CamEncoder(nn.Module):
 
         return feature, depth
 
+    # 前向传播，返回提取的特征和深度信息
     def forward(self, x):
         feature, depth = self.get_features_depth(x)
         

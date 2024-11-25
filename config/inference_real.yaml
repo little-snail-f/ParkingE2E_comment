@@ -1,7 +1,7 @@
-# 预训练模型的检查点文件路径
+# 预训练模型参数的路径
 model_ckpt_path: "./ckpt/pretrained_model.ckpt"
 training_config: "training_real"
-predict_mode: "topic"
+predict_mode: "topic"   # 话题模式
 
 # 轨迹发布的频率
 trajectory_pub_frequency: 1

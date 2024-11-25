@@ -1,14 +1,17 @@
 %YAML:1.0
 
+# 图像尺寸
 Width: 1920
 Height: 1080
 
+# 可能用于图像的缩放或拉伸操作
 StretchMatrix: !!opencv-matrix
   rows: 2
   cols: 2
-  dt: d
+  dt: d   # 双精度浮点数
   data: [0.998661868413995, 8.246479777117340e-04, -0.003712058294221, 1]
 
+# 相机的映射系数，可能与相机的内参或畸变参数相关
 MappingCoefficients: !!opencv-matrix
   rows: 4
   cols: 1
@@ -16,12 +19,14 @@ MappingCoefficients: !!opencv-matrix
   data: [5.080670450770476e+02, -4.188906997318177e-04,
          3.957530420691659e-08, -2.770499612859330e-10]
 
+# 2×1 的 OpenCV 矩阵，表示畸变中心的坐标，用于相机的畸变校正
 DistortionCenter: !!opencv-matrix
   rows: 2
   cols: 1
   dt: d
   data: [9.713484401524236e+02, 5.354041917959559e+02]
 
+# 图像变换
 TransformMatrix: !!opencv-matrix
   rows: 3
   cols: 3

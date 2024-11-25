@@ -34,8 +34,11 @@ using namespace std::chrono;
     std::cout << stream << std::endl; \
   } while (0)
 
+// 加载多个鱼眼摄像头的参数文件，并将这些参数存储在类的成员变量中
 void FisheyeAVM::open(const std::vector<std::string> &filenames) {
+  // 参数文件的数量
   frames = filenames.size();
+  // 调整多个成员变量的大小
   widths.resize(frames);
   heights.resize(frames);
   stretchs.resize(frames);
@@ -52,6 +55,7 @@ void FisheyeAVM::open(const std::vector<std::string> &filenames) {
   warp32fs.resize(frames); //add
   img_tems.resize(frames);//add
 
+  // 如果定义了 USE_CUDA，则调整 CUDA 相关的成员变量大小
   #ifdef USE_CUDA
    cu_masks.resize(frames);
    cu_mapxs.resize(frames);
@@ -63,14 +67,18 @@ void FisheyeAVM::open(const std::vector<std::string> &filenames) {
    event_forks.resize(frames);
   #endif
 
+  // 加载参数文件
   for (size_t i = 0; i < frames; i++) {
-    cv::FileStorage fs(filenames[i], cv::FileStorage::READ);
+    cv::FileStorage fs(filenames[i], cv::FileStorage::READ);  // 读取
+    // 读取每个摄像头的宽度和高度
     fs["Width"] >> widths[i];
     fs["Height"] >> heights[i];
+    // 读取其他参数，存储为 OpenCV 矩阵
     cv::Mat stretch_cv = fs["StretchMatrix"].mat();
     cv::Mat coeff_cv = fs["MappingCoefficients"].mat();
     cv::Mat center_cv = fs["DistortionCenter"].mat();
     cv::Mat transform_cv = fs["TransformMatrix"].mat();
+    // 将 OpenCV 矩阵转换为 Eigen 格式
     cv::cv2eigen(stretch_cv, stretchs[i]);
     cv::cv2eigen(coeff_cv, coeffs[i]);
     cv::cv2eigen(center_cv, centers[i]);
@@ -78,6 +86,7 @@ void FisheyeAVM::open(const std::vector<std::string> &filenames) {
   }
 }
 
+// 初始化与鱼眼摄像头相关的参数和映射数据
 bool FisheyeAVM::initialize() {
   if (output_width <= 0 || output_height <= 0 || output_scale <= 0)
     return false;
@@ -85,6 +94,7 @@ bool FisheyeAVM::initialize() {
 
   TICK(initialize);
 
+  // 初始化映射和掩膜
   LOG("initialize mapx mapy mask");
   for (int i = 0; i < frames; i++) {
     REF(width, i);
@@ -172,7 +182,8 @@ bool FisheyeAVM::initialize() {
     }
   }
 
-  LOG("normalize mask");
+  // 对掩膜（mask）进行归一化处理
+  LOG("normalize mask"); 
   for (int i = 0; i < output_width * output_height; i++) {
     int x = i % output_width;
     int y = i / output_height;
@@ -186,6 +197,7 @@ bool FisheyeAVM::initialize() {
     }
   }
 
+  // 初始化 CUDA 缓冲区
   LOG("initialize cuda buffer");
   for (int i = 0; i < frames; i++) {
     REF(mask, i);
@@ -277,13 +289,16 @@ void FisheyeAVM::operator()(const std::vector<cv::Mat> &imgs,
 #endif
 
 
+// 未使用 CUDA 的情况下，处理鱼眼图像并生成合成结果
 #ifndef USE_CUDA
 void FisheyeAVM::operator()(const std::vector<cv::Mat> &imgs,
                             cv::Mat &result) const {
   TICK(operator);
-  canvas.setTo(cv::Scalar(0, 0, 0));
-  for (int i = 0; i < frames; i++) {
+  canvas.setTo(cv::Scalar(0, 0, 0));  // 输出结果，矩阵初始化为黑色
 
+  // 循环遍历每个帧
+  // 使用 REF 宏获取相关的成员变量，包括掩膜、映射矩阵、临时图像、ROI 和输入图像
+  for (int i = 0; i < frames; i++) {
     REF(mask, i);
     REF(mapx, i);
     REF(mapy, i);
@@ -292,12 +307,18 @@ void FisheyeAVM::operator()(const std::vector<cv::Mat> &imgs,
     REF(img_tem, i);
     REF(roi, i);
     REF(img, i);
+    // 对输入图像 img 进行重映射，生成 warp8u
     cv::remap(img, warp8u, mapx, mapy, cv::INTER_LINEAR); 
+    // 将 8 位图像转换为 32 位浮点格式
     warp8u.convertTo(warp32f, CV_32FC3 );
 
+    // 应用掩膜，然后转换回 8 位格式
     cv::multiply(warp32f, mask, warp32f, 1, CV_32FC3);
     warp32f.convertTo(warp8u, CV_8UC3);
   }
+  // 合成结果
+  // 对于每个帧，将处理后的图像 warp8u 添加到 canvas 的对应 ROI 区域中
+  // 使用 cv::add(...) 进行叠加
   for (int i = 0; i < frames; i++) {
     REF(warp8u, i);
     REF(roi, i);

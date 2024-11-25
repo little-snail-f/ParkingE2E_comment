@@ -1,18 +1,22 @@
 <launch>
+  <!-- 加载参数文件，四个鱼眼摄像头和定位的话题 -->
   <rosparam file="$(find core)/config/params.yaml" command="load" />
 
+  <!-- 节点，显示轨迹数据 -->
   <node pkg="core" type="e2e_traj_show.py" name="e2e_traj_show"/>
 
-  <!-- Rviz -->
+  <!-- 启动 RViz 可视化工具-->
   <node pkg="rviz" type="rviz" name="rviz" args='-d $(find core)/rviz/visual_BEV.rviz' />
 
-  <!-- IPM -->
+  <!-- IPM 处理鱼眼摄像头的图像数据-->
+  <!-- 将输入的四个摄像头图像合成为一个图像输出 -->
   <include file="$(find fisheye_avm)/launch/avm_nodelet.launch"/>
 
-  <!-- Display the IPM image in Rviz -->
+  <!-- 将 IPM 图像显示在 RViz 中 -->
+  <!-- 将接收到的图像数据转换为 RViz 中可视化的标记 -->
   <include file="$(find image_to_rviz)/launch/image_to_rviz.launch"/>
 
-  <!-- Undistort -->
+  <!-- 图像去畸变节点 -->
   <include file="$(find undistort)/launch/undistort.launch"/>
 
 </launch>

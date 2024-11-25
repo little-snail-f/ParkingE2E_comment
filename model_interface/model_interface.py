@@ -4,6 +4,7 @@ from model_interface.trainer_real import ParkingTrainingModuleReal
 from model_interface.inference_real import ParkingInferenceModuleReal
 
 
+# 根据运行模式和数据模式返回相应的停车模型类
 def get_parking_model(data_mode, run_mode):
     if run_mode == "train":
         if data_mode == "real_scene":
