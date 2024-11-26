@@ -9,19 +9,23 @@ from utils.config import Configuration
 
 
 class ParkingModelReal(nn.Module):
+    # 构造函数
     def __init__(self, cfg: Configuration):
+        # 调用父类的构造函数
         super().__init__()
 
         self.cfg = cfg
 
+        # 模型组件初始化
         # Camera Encoder
         self.lss_bev_model = LssBevModel(self.cfg)
-        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel)
+        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel) # 64
 
         # Target Encoder
         self.target_res_encoder = BevEncoder(in_channel=1)
 
-        # BEV Query
+        # BEV Query 
+        # BEV 查询模块
         self.bev_query = BevQuery(self.cfg)
 
         # Trajectory Decoder
@@ -151,6 +155,7 @@ class ParkingModelReal(nn.Module):
         
         return bev_feature
     
+    # 根据配置选择合适的轨迹解码器
     def get_trajectory_decoder(self):
         if self.cfg.decoder_method == "transformer":
             trajectory_decoder = TrajectoryDecoder(self.cfg)

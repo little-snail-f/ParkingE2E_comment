@@ -8,14 +8,19 @@ from utils.metrics import CustomizedMetric
 
 
 class ParkingTrainingModuleReal(pl.LightningModule):
+    # 构造函数
     def __init__(self, cfg: Configuration):
+        # 调用父类构造函数
         super(ParkingTrainingModuleReal, self).__init__()
+        # 保存超参数
         self.save_hyperparameters()
 
         self.cfg = cfg
 
+        # 设置损失函数
         self.traj_point_loss_func = self.get_loss_function()
         
+        # 创建泊车模型的实例
         self.parking_model = ParkingModelReal(self.cfg)
 
 
@@ -53,6 +58,7 @@ class ParkingTrainingModuleReal(pl.LightningModule):
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=self.cfg.epochs)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
 
+    # 根据配置选择适当的损失函数
     def get_loss_function(self):
         traj_point_loss_func = None
         if self.cfg.decoder_method == "transformer":

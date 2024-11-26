@@ -7,22 +7,28 @@ from utils.config import Configuration
 
 
 class LssBevModel(nn.Module):
+    # 构造函数
     def __init__(self, cfg: Configuration):
         super().__init__()
 
         self.cfg = cfg
 
-        bev_res, bev_start_pos, bev_dim = calculate_birds_eye_view_parameters(self.cfg.bev_x_bound,
-                                                                              self.cfg.bev_y_bound,
-                                                                              self.cfg.bev_z_bound)
+        # 计算鸟瞰图的分辨率、起始位置和维度
+        bev_res, bev_start_pos, bev_dim = calculate_birds_eye_view_parameters(self.cfg.bev_x_bound,     # [-10.0, 10.0, 0.1]
+                                                                              self.cfg.bev_y_bound,     # [-10.0, 10.0, 0.1]
+                                                                              self.cfg.bev_z_bound)     # [-10.0, 10.0, 20.0]
+        # 鸟瞰图参数存储为不可训练的模型参数
         self.bev_res = nn.Parameter(bev_res, requires_grad=False)
         self.bev_start_pos = nn.Parameter(bev_start_pos, requires_grad=False)
         self.bev_dim = nn.Parameter(bev_dim, requires_grad=False)
 
-        self.down_sample = self.cfg.bev_down_sample
+        # 下采样因子        
+        self.down_sample = self.cfg.bev_down_sample  # 8
 
+        # 创建视锥体，并获取深度通道的数量
         self.frustum = self.create_frustum()
         self.depth_channel, _, _, _ = self.frustum.shape
+        # 初始化相机编码器
         self.cam_encoder = CamEncoder(self.cfg, self.depth_channel)
 
     def create_frustum(self):

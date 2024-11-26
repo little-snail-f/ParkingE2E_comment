@@ -10,15 +10,24 @@ from utils.config import Configuration
 # 该类处理输入的特征图并提取特征
 # 使用 ResNet-18 作为主干网络
 class BevEncoder(nn.Module):
+    # 构造函数
     def __init__(self, in_channel):
         super().__init__()
+
+        # 使用 resnet18 函数初始化一个 ResNet-18 主干网络
+        # 不加载预训练权重，将残差块的权重初始化为零
         trunk = resnet18(weights=None, zero_init_residual=True)
 
+        # 卷积层                输入通道     输出64   卷积核
         self.conv1 = nn.Conv2d(in_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        # 批归一化层
         self.bn1 = trunk.bn1
+        # ReLU 激活函数
         self.relu = trunk.relu
+        # 最大池化层
         self.max_pool = trunk.maxpool
 
+        # 残差层
         self.layer1 = trunk.layer1
         self.layer2 = trunk.layer2
         self.layer3 = trunk.layer3

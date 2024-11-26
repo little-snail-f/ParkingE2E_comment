@@ -39,7 +39,7 @@ def train(config_obj):
     # 获取模型模块 -- ParkingTrainingModuleReal                          "real_scene"
     ParkingTrainingModelModule = get_parking_model(data_mode=config_obj.data_mode, run_mode="train")
 
-    # 模型实例
+    # 模型实例，包括超参数、损失函数、模型结构
     model = ParkingTrainingModelModule(config_obj)
 
     # 数据加载器实例

@@ -4,12 +4,16 @@ from utils.config import Configuration
 
 
 class TokenTrajPointLoss(nn.Module):
+    # 构造函数
     def __init__(self, cfg: Configuration):
         super(TokenTrajPointLoss, self).__init__()
         self.cfg = cfg
+        # 填充标记的索引，在计算损失时会被忽略
         self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1
+        # 初始化交叉熵损失函数，并指定忽略的索引
         self.ce_loss = nn.CrossEntropyLoss(ignore_index=self.PAD_token)
 
+    # 前向传播
     def forward(self, pred, data):
         pred = pred[:, :-1,:]
         pred_traj_point = pred.reshape(-1, pred.shape[-1])
