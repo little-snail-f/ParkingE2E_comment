@@ -8,9 +8,9 @@ data_mode: "real_scene"         # 数据模式，可能指的是使用真实场�
 num_gpus: 1
 cuda_device_index: "0"
 log_root_dir: './log/'
-checkpoint_root_dir: './ckpt'
+checkpoint_root_dir: './ckpt'   # checkpoint 保存模型在训练过程中的状态，不止有权重，还可以包含其他信息，如优化器的状态、当前的训练轮数、学习率、训练过程中的损失值等
 log_every_n_steps: 10
-check_val_every_n_epoch: 5      # 每 5 个 epoch 进行一次验证
+check_val_every_n_epoch: 5      # 每 5 个 epoch 进行验证一次模型
 epochs: 40
 learning_rate: 0.0001
 weight_decay: 0.00001
