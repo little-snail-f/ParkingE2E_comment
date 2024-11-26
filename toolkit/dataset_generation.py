@@ -23,11 +23,13 @@ from rospy import Time
 from fisheye_undistort.fish_cam_process import FisheyeUndistort
 from utils.pose_utils import PoseFlow
 
+# 枚举类，车辆的行驶状态
 class DrivingState(Enum):
-    CANT_DET = 0
+    CANT_DET = 0 
     FORWARD = 1
     BACKWARD = -1
 
+# 管理多线程任务的执行
 class TaskExecutor:
     def __init__(self, task_func) -> None:
         self.task_func = task_func
@@ -45,19 +47,26 @@ class TaskExecutor:
             self.threads = []
 
 
+# 从 ROS bag 文件中读取数据并保存到指定的输出文件夹
 class Bag2E2E:
     def __init__(self, bag_file_path, output_folder, config_file_path, start_time=0.0, duration_time=-1, pose_format= "euler_angle", sample_rate=1, image_channel_list=["left", "right", "front", "back"]):
+        # 提取文件名（不带扩展名）
         self.bag_tag = os.path.splitext(os.path.basename(bag_file_path))[0]
         
+        # 获取 topic 信息
         self.get_topic(config_file_path)
 
+        # 训练和验证输出文件夹的路径
         self.output_folder_train = os.path.join(output_folder, "train", self.bag_tag)
         self.output_folder_val = os.path.join(output_folder, "val", self.bag_tag)
         
+        # 创建输出文件夹，确保存在
         os.makedirs(self.output_folder_train, exist_ok=True)
         os.makedirs(self.output_folder_val, exist_ok=True)
 
+        # 图像通道
         self.image_channel_list = image_channel_list
+        # 位姿格式
         self.pose_format = pose_format
         self.start_time = start_time
         self.duration_time = duration_time
@@ -69,10 +78,12 @@ class Bag2E2E:
         if not os.path.exists(self.output_folder_val):
             os.makedirs(self.output_folder_val)
 
+        # 打开 ROS bag 文件
         self.bag = rosbag.Bag(bag_file_path)
         self.bridge = CvBridge()
 
         para_path = "./fisheye_undistort/para"
+        # 创建 FisheyeUndistort 对象，用于去畸变处理                     ["left", "right", "front", "back"]
         self.undistort_obj = FisheyeUndistort(para_path=para_path, channel_list=self.image_channel_list)
 
         self.measurements = None
@@ -80,6 +91,7 @@ class Bag2E2E:
         self.yaw_list = None
         self.current_time = None
         self.initial_time = None
+        # 初始化图像银行，存储不同通道的图像
         self.image_bank = {}
         for item in self.image_channel_list:
             self.image_bank[item] = None
@@ -111,6 +123,7 @@ class Bag2E2E:
         check_topics.append(self.fisheye_back_topic)
         return check_topics
 
+    # 从配置文件中读取 ROS topic 信息
     def get_topic(self, config_file_path):
         with open(config_file_path, 'r') as yaml_file:
             content = yaml.safe_load(yaml_file)
@@ -118,6 +131,7 @@ class Bag2E2E:
         self.fisheye_back_topic = content["fisheye_back_topic"]
         self.fisheye_left_topic = content["fisheye_left_topic"]
         self.fisheye_right_topic = content["fisheye_right_topic"]
+        # 将这些 topic 名称组合成一个列表
         self.camera_topic = [self.fisheye_front_topic, self.fisheye_back_topic, 
                              self.fisheye_left_topic, self.fisheye_right_topic]
         self.measurements_topic_name = content["localization_topic"]
@@ -327,7 +341,9 @@ class Bag2E2E:
                             os.path.join(self.output_folder_val, item))
 
 
+# @click.command() 装饰器将 main 函数标记为一个命令行命令，使其可以通过命令行调用
 @click.command()
+# @click.option() 装饰器用于定义命令行选项。用户可以在运行脚本时通过命令行传递这些选项
 @click.option("--bag_file_path", type=str, default="")
 @click.option("--output_folder_path", type=str, default="")
 @click.option("--config_file_path", type=str, default="./catkin_ws/src/core/config/params.yaml")
