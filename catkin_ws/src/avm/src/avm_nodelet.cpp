@@ -78,9 +78,6 @@ class avm_nodelet : public nodelet::Nodelet {
 // 宏定义，用于从 ROS 参数服务器获取参数
 #define PARAM(name, var)                                     \
   do {                                                       \
-    // 尝试从私有节点句柄 nhp 中获取参数
-    // 如果在私有节点句柄中未找到参数，则尝试从全局节点句柄 nh 中获取参数
-    // 如果两个句柄中都未找到参数，则输出错误信息，指明缺少的参数名称
     if (!nhp.getParam(name, var) && !nh.getParam(name, var)) {                          \
       NODELET_ERROR_STREAM("missing parameter '" #name "'"); \
       return;                                                \

@@ -98,7 +98,8 @@ class InferenceConfiguration:
 
 # 加载训练配置文件
 def get_train_config_obj(config_path: str):
-    exp_name = get_exp_name()
+    # 获取实验名称
+    exp_name = get_exp_name()   
     with open(config_path, 'r') as yaml_file:
         try:
             config_yaml = yaml.safe_load(yaml_file)
