@@ -108,7 +108,7 @@ def get_train_config_obj(config_path: str):
             config_obj.config_path = config_path
             # 设置日志目录
             config_obj.log_dir = os.path.join(config_obj.log_root_dir, exp_name)
-            # 设置检查点目录
+            # 设置检查点目录   ‘./ckpt/exp_2024_11_28_9_49_21’
             config_obj.checkpoint_dir = os.path.join(config_obj.checkpoint_root_dir, exp_name)
         except yaml.YAMLError:
             logger.exception("Open {} failed!", config_path)
@@ -120,7 +120,7 @@ def get_exp_name():
     today = datetime.datetime.now()
     today_str = "{}_{}_{}_{}_{}_{}".format(today.year, today.month, today.day,
                                            today.hour, today.minute, today.second)
-    exp_name = "exp_{}".format(today_str)
+    exp_name = "exp_{}".format(today_str)  # {} 是一个占位符，通过 format(today_str) 将 today_str 的值插入到占位符 {} 的位置
     return exp_name
 
 # 加载推理配置文件并返回一个配置对象

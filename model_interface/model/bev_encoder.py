@@ -64,7 +64,7 @@ class BevQuery(nn.Module):
         # 堆叠 num_layers 个解码器层  # 4
         self.tf_query = nn.TransformerDecoder(tf_layer, num_layers=self.cfg.query_en_layers)
 
-        # 位置嵌入，为输入序列添加位置信息
+        # 位置嵌入，为输入序列添加位置信息 可学习参数 [256, 256]
         self.pos_embed = nn.Parameter(torch.randn(1, self.cfg.query_en_bev_length, self.cfg.query_en_dim) * .02)
 
         # 初始化权重

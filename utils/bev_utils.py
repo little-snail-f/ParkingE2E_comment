@@ -15,12 +15,15 @@ def calculate_birds_eye_view_parameters(x_bounds, y_bounds, z_bounds):
 
     Returns
     -------
-        bev_resolution: Bird's-eye view bev_resolution
-        bev_start_position: Bird's-eye view first element
-        bev_dimension: Bird's-eye view tensor spatial dimension
+        bev_resolution: Bird's-eye view bev_resolution 分辨率
+        bev_start_position: Bird's-eye view first element 起始位置
+        bev_dimension: Bird's-eye view tensor spatial dimension 空间维度
     """
+    # 分辨率，从每个边界中提取第三个元素  tensor([ 0.1000,  0.1000, 20.0000])
     bev_resolution = torch.tensor([row[2] for row in [x_bounds, y_bounds, z_bounds]])
+    # 起始位置，使用最小边界加上分辨率的一半  tensor([-9.9500, -9.9500,  0.0000])
     bev_start_position = torch.tensor([row[0] + row[2] / 2.0 for row in [x_bounds, y_bounds, z_bounds]])
+    # 维度，(最大边界 - 最小边界)/分辨率  tensor([200, 200,   1])
     bev_dimension = torch.tensor([(row[1] - row[0]) / row[2] for row in [x_bounds, y_bounds, z_bounds]],
                                  dtype=torch.long)
 
@@ -284,12 +287,16 @@ class VoxelsSumming(torch.autograd.Function):
 
         return output_grad, None, None
 
+# 用于实现上采样和特征拼接的操作
 class UpsamplingConcat(nn.Module):
+    #                      216           64       上采样缩放因子，特征图的空间尺寸将被放大为原来的 2 倍
     def __init__(self, in_channels, out_channels, scale_factor=2):
         super().__init__()
 
+        # 上采样层，使用双线性插值（bilinear interpolation）将输入特征图的空间尺寸放大
         self.upsample = nn.Upsample(scale_factor=scale_factor, mode='bilinear', align_corners=False)
 
+        # 卷积层
         self.conv = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
@@ -305,17 +312,24 @@ class UpsamplingConcat(nn.Module):
         return self.conv(x_to_upsample)
 
 
+# 主要用于图像分割任务
 class DeepLabHead(nn.Sequential):
+    #                    160        输出类别数: 160     64
     def __init__(self, in_channels, num_classes, hidden_channel=256):
         super(DeepLabHead, self).__init__(
+            # 提取多尺度特征，这个层的作用是增强模型对不同尺度物体的感知能力
             ASPP(in_channels, [12, 24, 36], hidden_channel),
+            # 3x3 卷积层
             nn.Conv2d(hidden_channel, hidden_channel, 3, padding=1, bias=False),
+            # 批归一化层
             nn.BatchNorm2d(hidden_channel),
             nn.ReLU(),
+            # 1x1 卷积层，将特征图的通道数从 64 变化到 160
             nn.Conv2d(hidden_channel, num_classes, 1)
         )
 
 
+# 实现带有空洞卷积的卷积层
 class ASPPConv(nn.Sequential):
     def __init__(self, in_channels, out_channels, dilation):
         modules = [
@@ -326,9 +340,11 @@ class ASPPConv(nn.Sequential):
         super(ASPPConv, self).__init__(*modules)
 
 
+# 这个类的主要功能是通过全局平均池化来提取全局上下文信息，并将其与其他特征进行融合
 class ASPPPooling(nn.Sequential):
     def __init__(self, in_channels, out_channels):
         super(ASPPPooling, self).__init__(
+            # 将输入特征图的空间尺寸自适应地缩小到 1x1
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(in_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
@@ -341,23 +357,29 @@ class ASPPPooling(nn.Sequential):
         return F.interpolate(x, size=size, mode='bilinear', align_corners=False)
 
 
+# ASPP 是 DeepLab 系列模型中的一个关键组件，旨在通过多尺度特征提取来增强模型对不同尺寸物体的感知能力
 class ASPP(nn.Module):
     def __init__(self, in_channels, atrous_rates, out_channels=256):
         super(ASPP, self).__init__()
         modules = []
+        #  1x1 卷积层 + 批归一化层 + ReLU 激活函数
         modules.append(nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU()))
 
+        # 三个空洞卷积层，空洞率分别为 12、24、36，有效捕捉不同范围的信息
         rates = tuple(atrous_rates)
         for rate in rates:
             modules.append(ASPPConv(in_channels, out_channels, rate))
 
+        # 池化层
         modules.append(ASPPPooling(in_channels, out_channels))
 
+        # 将所有的卷积和池化层存储在一个 ModuleList 中，以便在前向传播时使用
         self.convs = nn.ModuleList(modules)
 
+        # 输出层
         self.project = nn.Sequential(
             nn.Conv2d(len(self.convs) * out_channels, out_channels, 1, bias=False),
             nn.BatchNorm2d(out_channels),

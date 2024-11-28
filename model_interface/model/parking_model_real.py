@@ -18,14 +18,14 @@ class ParkingModelReal(nn.Module):
 
         # 模型组件初始化
         # Camera Encoder
-        self.lss_bev_model = LssBevModel(self.cfg)
-        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel) # 64
+        self.lss_bev_model = LssBevModel(self.cfg) # 结合了 EfficientNet 作为主干网络和 DeepLabHead 结构来提取多尺度特征。。通过上采样和特征拼接，该模型能够有效地处理图像分割任务。
+        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel) # 基于 ResNet 的设计，具体使用了基本块（BasicBlock）来构建网络  
 
         # Target Encoder
         self.target_res_encoder = BevEncoder(in_channel=1)
 
         # BEV Query 
-        # BEV 查询模块
+        # BEV 查询模块，包含 TransformerDecoder 组件
         self.bev_query = BevQuery(self.cfg)
 
         # Trajectory Decoder

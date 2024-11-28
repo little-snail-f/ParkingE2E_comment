@@ -13,7 +13,7 @@ class LssBevModel(nn.Module):
 
         self.cfg = cfg
 
-        # 计算鸟瞰图的分辨率、起始位置和维度
+        # 计算鸟瞰图的分辨率、起始位置和维度(每个方向上的像素值)
         bev_res, bev_start_pos, bev_dim = calculate_birds_eye_view_parameters(self.cfg.bev_x_bound,     # [-10.0, 10.0, 0.1]
                                                                               self.cfg.bev_y_bound,     # [-10.0, 10.0, 0.1]
                                                                               self.cfg.bev_z_bound)     # [-10.0, 10.0, 20.0]
@@ -27,23 +27,127 @@ class LssBevModel(nn.Module):
 
         # 创建视锥体，并获取深度通道的数量
         self.frustum = self.create_frustum()
-        self.depth_channel, _, _, _ = self.frustum.shape
-        # 初始化相机编码器
+        self.depth_channel, _, _, _ = self.frustum.shape # torch.Size([48, 32, 32, 3])
+        # 初始化相机编码器                              48
         self.cam_encoder = CamEncoder(self.cfg, self.depth_channel)
 
+    # 创建一个三维的视锥体，用于表示相机的视野范围，定义了相机可以看到的三维空间区域
     def create_frustum(self):
+        # 最终图像的尺寸 [256, 256]
         h, w = self.cfg.final_dim
+        # 下采样后的图像尺寸 [32, 32]
         down_sample_h, down_sample_w = h // self.down_sample, w // self.down_sample
 
-        depth_grid = torch.arange(*self.cfg.d_bound, dtype=torch.float)
-        depth_grid = depth_grid.view(-1, 1, 1).expand(-1, down_sample_h, down_sample_w)
-        depth_slice = depth_grid.shape[0]
+        # 创建一个深度网格
+        # tensor([[[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]],
 
+        # [[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]],
+
+        # [[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]],
+
+        # ...,
+
+        # [[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]],
+
+        # [[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]],
+
+        # [[ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  ...,
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500],
+        #  [ 0.5000,  0.7500,  1.0000,  ..., 11.7500, 12.0000, 12.2500]]])
+        depth_grid = torch.arange(*self.cfg.d_bound, dtype=torch.float)
+        # tensor([[[ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000],
+        #  [ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000],
+        #  [ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000],
+        #  ...,
+        #  [ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000],
+        #  [ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000],
+        #  [ 0.5000,  0.5000,  0.5000,  ...,  0.5000,  0.5000,  0.5000]],
+
+        # [[ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500],
+        #  [ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500],
+        #  [ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500],
+        #  ...,
+        #  [ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500],
+        #  [ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500],
+        #  [ 0.7500,  0.7500,  0.7500,  ...,  0.7500,  0.7500,  0.7500]],
+
+        # [[ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
+        #  [ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
+        #  [ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
+        #  ...,
+        #  [ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
+        #  [ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000],
+        #  [ 1.0000,  1.0000,  1.0000,  ...,  1.0000,  1.0000,  1.0000]],
+
+        # ...,
+
+        # [[11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500],
+        #  [11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500],
+        #  [11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500],
+        #  ...,
+        #  [11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500],
+        #  [11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500],
+        #  [11.7500, 11.7500, 11.7500,  ..., 11.7500, 11.7500, 11.7500]],
+
+        # [[12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000],
+        #  [12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000],
+        #  [12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000],
+        #  ...,
+        #  [12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000],
+        #  [12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000],
+        #  [12.0000, 12.0000, 12.0000,  ..., 12.0000, 12.0000, 12.0000]],
+
+        # [[12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500],
+        #  [12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500],
+        #  [12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500],
+        #  ...,
+        #  [12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500],
+        #  [12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500],
+        #  [12.2500, 12.2500, 12.2500,  ..., 12.2500, 12.2500, 12.2500]]])
+        depth_grid = depth_grid.view(-1, 1, 1).expand(-1, down_sample_h, down_sample_w)
+        depth_slice = depth_grid.shape[0] # 48
+
+        # 创建 x 和 y 网格
         x_grid = torch.linspace(0, w - 1, down_sample_w, dtype=torch.float)
         x_grid = x_grid.view(1, 1, down_sample_w).expand(depth_slice, down_sample_h, down_sample_w)
         y_grid = torch.linspace(0, h - 1, down_sample_h, dtype=torch.float)
         y_grid = y_grid.view(1, down_sample_h, 1).expand(depth_slice, down_sample_h, down_sample_w)
 
+        # 堆叠网格
         frustum = torch.stack((x_grid, y_grid, depth_grid), -1)
 
         return nn.Parameter(frustum, requires_grad=False)
@@ -142,23 +246,24 @@ class CamEncoder(nn.Module):
     def __init__(self, cfg, D):
         super().__init__()
         self.D = D
-        self.C = cfg.bev_encoder_in_channel
+        self.C = cfg.bev_encoder_in_channel # 64    
         self.use_depth_distribution = cfg.use_depth_distribution
-        self.downsample = cfg.bev_down_sample
-        self.version = cfg.backbone.split('-')[1]
+        self.downsample = cfg.bev_down_sample # 8
+        self.version = cfg.backbone.split('-')[1] # backbone 网络的版本，‘b4’
 
-        self.backbone = EfficientNet.from_pretrained(cfg.backbone)
-        self.delete_unused_layers()
+        self.backbone = EfficientNet.from_pretrained(cfg.backbone) # 使用 EfficientNet 作为主干网络，加载预训练权重
+        self.delete_unused_layers() # 删除主干网络中不需要的层
         if self.version == 'b4':
-            self.reduction_channel = [0, 24, 32, 56, 160, 448]
+            self.reduction_channel = [0, 24, 32, 56, 160, 448] # EfficientNet 模型中不同层的通道数
         elif self.version == 'b0':
             self.reduction_channel = [0, 16, 24, 40, 112, 320]
         else:
             raise NotImplementedError
-        self.upsampling_out_channel = [0, 48, 64, 128, 512]
+        self.upsampling_out_channel = [0, 48, 64, 128, 512]     # 指定在上采样过程中各个阶段的输出通道数
 
-        index = np.log2(self.downsample).astype(np.int)
+        index = np.log2(self.downsample).astype(np.int) # 3
 
+        # 这里不采用深度分布
         if self.use_depth_distribution:
             self.depth_layer_1 = DeepLabHead(self.reduction_channel[index + 1],
                                              self.reduction_channel[index + 1],
@@ -166,29 +271,36 @@ class CamEncoder(nn.Module):
             self.depth_layer_2 = UpsamplingConcat(self.reduction_channel[index + 1] + self.reduction_channel[index],
                                                   self.D)
 
+        # 定义两个特征层
+        # 提取特征的第一层，输入和输出通道数为 160，隐藏通道数为 64
         self.feature_layer_1 = DeepLabHead(self.reduction_channel[index + 1],
                                            self.reduction_channel[index + 1],
                                            hidden_channel=64)
+        # 进行上采样和特征拼接，输入通道数为 160 + 56，输出通道数为 64
         self.feature_layer_2 = UpsamplingConcat(self.reduction_channel[index + 1] + self.reduction_channel[index],
                                                 self.C)
 
+    # 删除主干网络中不需要的层
     def delete_unused_layers(self):
         indices_to_delete = []
+        # 遍历 EfficientNet 主干网络中的所有块，如果 self.version == 'b4'，删除索引大于21的块
         for idx in range(len(self.backbone._blocks)):
             if self.downsample == 8:
                 if self.version == 'b0' and idx > 10:
                     indices_to_delete.append(idx)
                 if self.version == 'b4' and idx > 21:
-                    indices_to_delete.append(idx)
+                    indices_to_delete.append(idx)   # 最后 indices_to_delete = [22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
 
+        # 反向遍历，删除指定的块
         for idx in reversed(indices_to_delete):
             del self.backbone._blocks[idx]
 
-        del self.backbone._conv_head
-        del self.backbone._bn1
-        del self.backbone._avg_pooling
-        del self.backbone._dropout
-        del self.backbone._fc
+        # 删除特定层
+        del self.backbone._conv_head    # 最后的卷积层
+        del self.backbone._bn1          # 最后的批归一化层
+        del self.backbone._avg_pooling  # 全局平均池化层
+        del self.backbone._dropout      # 
+        del self.backbone._fc           # 全连接层
 
     # 提取特征和深度信息（使用 EfficientNet 作为主干网络，旨在解决深度学习模型在准确性和计算效率之间的权衡）
     # x: 输入图像，(4, c, h, w)

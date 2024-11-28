@@ -8,7 +8,7 @@ class TokenTrajPointLoss(nn.Module):
     def __init__(self, cfg: Configuration):
         super(TokenTrajPointLoss, self).__init__()
         self.cfg = cfg
-        # 填充标记的索引，在计算损失时会被忽略
+        # 填充标记的索引，在计算损失时会被忽略  1200 + 3 - 1
         self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1
         # 初始化交叉熵损失函数，并指定忽略的索引
         self.ce_loss = nn.CrossEntropyLoss(ignore_index=self.PAD_token)

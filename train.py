@@ -1,4 +1,4 @@
-import argparse
+import argparse    # 处理命令行参数和选项
 
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -26,6 +26,7 @@ def decorator_function(train_function):
 @decorator_function
 def train(config_obj):
     # 使用 PyTorch Lightning 创建 Trainer 实例
+    # Trainer 是 PyTorch Lightning 中的一个核心类，用于管理训练过程，封装了训练循环、验证、测试等功能
     parking_trainer = Trainer(callbacks=setup_callbacks(config_obj),                # 设置回调函数，包括Checkpoint 回调、进度条回调、模型摘要回调和学习率监控回调
                               logger=TensorBoardLogger(save_dir=config_obj.log_dir, default_hp_metric=False),
                               accelerator='gpu',                                    # 使用 GPU 进行训练
@@ -42,7 +43,7 @@ def train(config_obj):
     # 模型实例，包括超参数、损失函数、模型结构
     model = ParkingTrainingModelModule(config_obj)
 
-    # 数据加载器实例
+    # 数据加载器实例，初始化训练和验证数据加载器为 None
     data = ParkingDataloaderModule(config_obj)
 
     # 训练
@@ -54,15 +55,15 @@ def main():
     seed_everything(16)
 
     # 命令行参数解析，读取训练配置文件
-    arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument('--config', default='./config/training_real.yaml', type=str)
+    arg_parser = argparse.ArgumentParser() # 创建解析器
+    arg_parser.add_argument('--config', default='./config/training_real.yaml', type=str) # 添加参数
     args = arg_parser.parse_args()  # 解析命令行参数
     config_path = args.config       # 配置文件路径
     # 加载配置对象
     config_obj = get_train_config_obj(config_path)
 
     # 开始训练
-    train(config_obj)
+    train(config_obj)  # 先跳转到 wrapper_function 进行包装
 
 
 if __name__ == '__main__':

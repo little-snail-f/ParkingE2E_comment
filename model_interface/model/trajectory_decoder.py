@@ -9,13 +9,13 @@ class TrajectoryDecoder(nn.Module):
     def __init__(self, cfg: Configuration):
         super().__init__()
         self.cfg = cfg
-        self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1
+        self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1 # 1202
 
         # 嵌入层，用于将输入的标记（tokens）转换为稠密的向量表示
         #                             词汇表中token的数量(1200)+附加的特殊标记的数量(3)，嵌入向量的维度(256)
-        #                                       例如开始标记(BOS)、结束标记(EOS)、填充标记(PAD)等 
+        # Embedding(1203, 256)                    例如开始标记(BOS)、结束标记(EOS)、填充标记(PAD)等 
         self.embedding = nn.Embedding(self.cfg.token_nums + self.cfg.append_token, self.cfg.tf_de_dim)
-        self.pos_drop = nn.Dropout(self.cfg.tf_de_dropout)
+        self.pos_drop = nn.Dropout(self.cfg.tf_de_dropout) # Dropout(p=0.05, inplace=False)
 
         item_cnt = self.cfg.autoregressive_points
 
