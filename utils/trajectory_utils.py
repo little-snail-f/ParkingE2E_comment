@@ -48,14 +48,14 @@ class TrajectoryInfoParser:
     def __init__(self, task_index, task_path):
         self.task_index = task_index
         self.task_path = task_path
-        self.total_frames = self._get_trajectory_num()
-        self.trajectory_list = self.make_trajectory()
-        self.progress_list = self.get_progress_list()
-        self.candidate_target_pose = self.get_candidate_target_pose()
+        self.total_frames = self._get_trajectory_num()  # 轨迹帧数
+        self.trajectory_list = self.make_trajectory()   # 轨迹列表，包含每一帧的位置信息和姿态信息
+        self.progress_list = self.get_progress_list()   # 进度列表
+        self.candidate_target_pose = self.get_candidate_target_pose()   # 候选目标姿态
 
-
+    # 获取与当前任务相关的轨迹帧数
     def _get_trajectory_num(self) -> int:
-        return len(os.listdir(os.path.join(self.task_path, "measurements")))
+        return len(os.listdir(os.path.join(self.task_path, "measurements"))) # 计算指定目录中文件的数量
     
     def get_trajectory_point(self, point_index) -> CustomizePose:
         return self.trajectory_list[point_index]
@@ -96,19 +96,26 @@ class TrajectoryInfoParser:
             yaw -= 360
         return yaw
 
+    # 生成并返回指定索引的 JSON 文件路径
     def get_measurement_path(self, measurement_index) -> str:
         return os.path.join(self.task_path, "measurements", "{}.json".format(str(measurement_index).zfill(4)))
 
+    # 生成一个轨迹列表，包含每一帧的位置信息和姿态信息
     def make_trajectory(self) -> List[CustomizePose]:
         trajectory_list = []
+        # 帧迭代
         for frame in range(0, self.total_frames):
+            # 获取当前帧的数据
             data = get_json_content(self.get_measurement_path(frame))
+            # 创建当前帧的姿态对象
             cur_pose = CustomizePose(x=data["x"], y=data["y"], z=data["z"], roll=data["roll"], yaw=data["yaw"], pitch=data["pitch"])
             trajectory_list.append(cur_pose)
         return trajectory_list
 
+    # 计算并返回一个表示进度的列表, 用于表示在轨迹中的相对位置
     def get_progress_list(self) -> List[float]:
         distance_list = [0.0]
+        # distance_list 的每个元素表示从起始位置到当前帧的总距离
         for index in range(1, self.total_frames):
             distance_list.append(distance_list[-1] + self._get_backwark_delta_distance(index))
         progress_list = 1 - np.array(distance_list) / distance_list[-1]

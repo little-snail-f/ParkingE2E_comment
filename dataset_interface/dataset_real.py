@@ -12,22 +12,23 @@ from utils.trajectory_utils import TrajectoryInfoParser, tokenize_traj_point
 
 
 class ParkingDataModuleReal(torch.utils.data.Dataset):
+    # 构造函数
     def __init__(self, config: Configuration, is_train):
         super(ParkingDataModuleReal, self).__init__()
         self.cfg = config
 
-        self.BOS_token = self.cfg.token_nums
-        self.EOS_token = self.cfg.token_nums + self.cfg.append_token - 2
-        self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1
+        self.BOS_token = self.cfg.token_nums                                # 1200                               
+        self.EOS_token = self.cfg.token_nums + self.cfg.append_token - 2    # 1201
+        self.PAD_token = self.cfg.token_nums + self.cfg.append_token - 1    # 1202
 
         self.root_dir = self.cfg.data_dir
-        self.is_train = is_train
+        self.is_train = is_train                                            # 1
         self.images_tag = ("rgb_front", "rgb_left", "rgb_right", "rgb_rear")
 
         self.intrinsic = {}
         self.extrinsic = {}
         self.images = {}
-        for image_tag in self.images_tag:
+        for image_tag in self.images_tag:    # {'rgb_front': [], 'rgb_left': [], 'rgb_right': [], 'rgb_rear': []}
             self.images[image_tag] = []
 
         self.task_index_list = []
@@ -36,7 +37,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
         self.traj_point = []
         self.traj_point_token = []
         self.target_point = []
-        self.create_gt_data()
+        self.create_gt_data()               # 地面真值数据
 
     def __len__(self):
         return len(self.images["rgb_front"])
@@ -58,24 +59,31 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
         return data
 
+    # 生成地面真值（ground truth）数据，包括轨迹点、目标点和图像路径等
     def create_gt_data(self):
+        # 获取所有任务的列表
         all_tasks = self.get_all_tasks()
 
-        for task_index, task_path in tqdm.tqdm(enumerate(all_tasks)):  # task iteration
+        # 任务迭代
+        for task_index, task_path in tqdm.tqdm(enumerate(all_tasks)):  # 使用 tqdm 库为任务迭代添加进度条，便于监控处理进度
+            # 解析与当前任务相关的相机信息和轨迹信息
             image_info_obj = CameraInfoParser(task_index, task_path)
             traje_info_obj = TrajectoryInfoParser(task_index, task_path)
 
+            # 相机的内参和外参
             self.intrinsic[task_index] = image_info_obj.intrinsic
             self.extrinsic[task_index] = image_info_obj.extrinsic
 
+            # 轨迹点迭代
             for ego_index in range(0, traje_info_obj.total_frames):  # ego iteration
+                # 获取轨迹点和变换矩阵
                 ego_pose = traje_info_obj.get_trajectory_point(ego_index)
                 world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix()
                 # create predict point
                 predict_point_token_gt, predict_point_gt = self.create_predict_point_gt(traje_info_obj, ego_index, world2ego_mat)
                 # create parking goal
                 fuzzy_parking_goal, parking_goal = self.create_parking_goal_gt(traje_info_obj, world2ego_mat)
-                # create image_path
+                # create image_path 图像路径
                 image_path = self.create_image_path_gt(task_path, ego_index)
 
                 self.traj_point.append(predict_point_gt)
@@ -87,6 +95,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
                     self.images[image_tag].append(image_path[image_tag])
                 self.task_index_list.append(task_index)
 
+        # 
         self.format_transform()
 
     def process_camera(self, index):
@@ -172,7 +181,9 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
                 all_tasks.append(task_path)
         return all_tasks
 
+    # 将存储的地面真值数据转换为 NumPy 数组
     def format_transform(self):
+        # 将轨迹点转换为 NumPy 数组，并将数据类型设置为 float32
         self.traj_point = np.array(self.traj_point).astype(np.float32)
         self.traj_point_token = np.array(self.traj_point_token).astype(np.int64)
         self.target_point = np.array(self.target_point).astype(np.float32)

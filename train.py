@@ -46,7 +46,7 @@ def train(config_obj):
     # 数据加载器实例，初始化训练和验证数据加载器为 None
     data = ParkingDataloaderModule(config_obj)
 
-    # 训练
+    # 启动训练
     parking_trainer.fit(model=model, datamodule=data, ckpt_path=config_obj.resume_path)
 
 
