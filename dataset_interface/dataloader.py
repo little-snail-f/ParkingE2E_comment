@@ -23,7 +23,7 @@ class ParkingDataloaderModule(pl.LightningDataModule):
         # 获取数据模块类 return ParkingDataModuleReal
         ParkingDataModule = get_parking_data(data_mode="real_scene")
         
-        # 训练数据加载器 跳转到 dataset_interface/dataset_real.py
+        # 训练数据加载器
         self.train_loader = DataLoader(dataset=ParkingDataModule(config=self.cfg, is_train=1),
                                        batch_size=self.cfg.batch_size,      # 1
                                        shuffle=True,                        # 在每个 epoch 开始时打乱数据，以提高训练效果
