@@ -29,8 +29,8 @@ def get_torch_intrinsics_or_extrinsics(intrinsic: np.array):
 class CameraInfoParser:
     # 初始化
     def __init__(self, task_index, parser_dir):
-        self.task_index = task_index
-        self.parser_dir = parser_dir    # "./utils"
+        self.task_index = task_index    # 0
+        self.parser_dir = parser_dir    # './e2e_dataset/train/demo_bag/1708690461_right'
         # 解析相机信息，并返回内参和外参
         self.intrinsic, self.extrinsic = self.parser_info()
 

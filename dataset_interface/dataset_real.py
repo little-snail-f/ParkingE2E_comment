@@ -61,14 +61,14 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
     # 生成地面真值（ground truth）数据，包括轨迹点、目标点和图像路径等
     def create_gt_data(self):
-        # 获取所有任务的列表
+        # 获取所有任务的列表（训练数据的路径）
         all_tasks = self.get_all_tasks()
 
         # 任务迭代
         for task_index, task_path in tqdm.tqdm(enumerate(all_tasks)):  # 使用 tqdm 库为任务迭代添加进度条，便于监控处理进度
             # 解析与当前任务相关的相机信息和轨迹信息
-            image_info_obj = CameraInfoParser(task_index, task_path)
-            traje_info_obj = TrajectoryInfoParser(task_index, task_path)
+            image_info_obj = CameraInfoParser(task_index, task_path)   # 训练数据索引，训练数据路径，当前训练数据的相机内外参
+            traje_info_obj = TrajectoryInfoParser(task_index, task_path) # 轨迹点数量、轨迹点、可能的目标点
 
             # 相机的内参和外参
             self.intrinsic[task_index] = image_info_obj.intrinsic
@@ -78,7 +78,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             for ego_index in range(0, traje_info_obj.total_frames):  # ego iteration
                 # 获取轨迹点和变换矩阵
                 ego_pose = traje_info_obj.get_trajectory_point(ego_index)
-                world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix()
+                world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix() # [4, 4]
                 # create predict point
                 predict_point_token_gt, predict_point_gt = self.create_predict_point_gt(traje_info_obj, ego_index, world2ego_mat)
                 # create parking goal
@@ -86,11 +86,12 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
                 # create image_path 图像路径
                 image_path = self.create_image_path_gt(task_path, ego_index)
 
+                # 将生成的预测点、停车目标和模糊停车目标添加到相应的列表中
                 self.traj_point.append(predict_point_gt)
-
                 self.traj_point_token.append(predict_point_token_gt)
                 self.target_point.append(parking_goal)
                 self.fuzzy_target_point.append(fuzzy_parking_goal)
+                # 将生成的图像路径添加到相应的图像列表中
                 for image_tag in self.images_tag:
                     self.images[image_tag].append(image_path[image_tag])
                 self.task_index_list.append(task_index)
@@ -117,22 +118,31 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
         return images, intrinsics, extrinsics
 
+    # 基于给定的轨迹信息和变换矩阵，生成预测点和相应的标记（token）
     def create_predict_point_gt(self, traje_info_obj: TrajectoryInfoParser, ego_index: int, world2ego_mat: np.array) -> List[int]:
         predict_point, predict_point_token = [], []
-        for predict_index in range(self.cfg.autoregressive_points):  # predict iteration
+        # 遍历 30 个的自回归预测点
+        for predict_index in range(self.cfg.autoregressive_points):  # predict iteration 30
+            # 当前预测点的索引？？？ 3，6，9，12，...
             predict_stride_index = self.get_clip_stride_index(predict_index = predict_index, 
-                                                                start_index=ego_index, 
+                                                                start_index=ego_index,  # 当前真实轨迹点索引
                                                                 max_index=traje_info_obj.total_frames - 1, 
-                                                                stride=self.cfg.traj_downsample_stride)
+                                                                stride=self.cfg.traj_downsample_stride) # 3
+            # 获取当前预测索引对应的轨迹点并转换到自车坐标系
             predict_pose_in_world = traje_info_obj.get_trajectory_point(predict_stride_index)
             predict_pose_in_ego = predict_pose_in_world.get_pose_in_ego(world2ego_mat)
+            # 获取当前预测点的进度
             progress = traje_info_obj.get_progress(predict_stride_index)
+            # 存储预测点
             predict_point.append([predict_pose_in_ego.x, predict_pose_in_ego.y])
+            # 生成标记（token） 维度:[x, y, progress]
             tokenize_ret = tokenize_traj_point(predict_pose_in_ego.x, predict_pose_in_ego.y, 
                                                 progress, self.cfg.token_nums, self.cfg.xy_max)
+            # 维度:[x, y]
             tokenize_ret_process = tokenize_ret[:2] if self.cfg.item_number == 2 else tokenize_ret
             predict_point_token.append(tokenize_ret_process)
 
+            # 如果达到轨迹的最后一帧或预测点的最后一个索引，则提前结束循环
             if predict_stride_index == traje_info_obj.total_frames - 1 or predict_index == self.cfg.autoregressive_points - 1:
                 break
 
@@ -169,16 +179,20 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             image_path[image_tag] = os.path.join(task_path, image_tag, filename)
         return image_path
 
+    # 获取训练或验证数据集中的所有任务路径
     def get_all_tasks(self):
         all_tasks = []
-        train_data_dir = os.path.join(self.root_dir, self.cfg.training_dir)
+        train_data_dir = os.path.join(self.root_dir, self.cfg.training_dir) # './e2e_dataset/train'
         val_data_dir = os.path.join(self.root_dir, self.cfg.validation_dir)
+        # 根据配置和当前训练状态构建训练和验证数据的目录路径
         data_dir = train_data_dir if self.is_train == 1 else val_data_dir
+        # 遍历指定数据目录中的所有场景中的所有任务
         for scene_item in os.listdir(data_dir):
             scene_path = os.path.join(data_dir, scene_item)
             for task_item in os.listdir(scene_path):
                 task_path = os.path.join(scene_path, task_item)
-                all_tasks.append(task_path)
+                # 将每个任务的完整路径添加到 all_tasks 列表中
+                all_tasks.append(task_path) # './e2e_dataset/train/demo_bag/1708690461_right'
         return all_tasks
 
     # 将存储的地面真值数据转换为 NumPy 数组
@@ -192,6 +206,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             self.images[image_tag] = np.array(self.images[image_tag]).astype(np.string_)
         self.task_index_list = np.array(self.task_index_list).astype(np.int64)
 
+    # 计算新的索引：start_index + stride * (1 + predict_index)，确保计算结果在 0 和 max_index 之间
     def get_clip_stride_index(self, predict_index, start_index, max_index, stride):
         return int(np.clip(start_index + stride * (1 + predict_index), 0, max_index))
 

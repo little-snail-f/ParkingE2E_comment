@@ -11,6 +11,7 @@ from utils.pose_utils import CustomizePose
 
 
 
+# 将轨迹点的坐标和进度转换为标记（token）
 def tokenize_traj_point(x, y, progress, token_nums, xy_max, progress_bar=1):
     """
     Tokenize trajectory points
@@ -20,12 +21,14 @@ def tokenize_traj_point(x, y, progress, token_nums, xy_max, progress_bar=1):
     :return: tokenized control range [0, token_nums]
     """
     valid_token = token_nums - 1
+    # 将 x、y 和 progress 归一化到 [0, 1] 的范围
     x_normalize = (x + xy_max) / (2 * xy_max)
     y_normalize = (y + xy_max) / (2 * xy_max)
     progress_normalize = (progress + progress_bar) / (2 * progress_bar)
    
     if x_normalize > 1 or y_normalize > 1 or progress_normalize > 1 or x_normalize < 0 or y_normalize < 0 or progress_normalize < 0:
         raise ValueError("x_normalize: {}, y_normalize: {}, progress_normalize: {}".format(x_normalize, y_normalize, progress_normalize))
+    # 将归一化后的值乘以有效标记数量并转换为整数，返回标记列表
     return [int(x_normalize * valid_token), int(y_normalize * valid_token), int(progress_normalize * valid_token)]
 
 
@@ -48,9 +51,9 @@ class TrajectoryInfoParser:
     def __init__(self, task_index, task_path):
         self.task_index = task_index
         self.task_path = task_path
-        self.total_frames = self._get_trajectory_num()  # 轨迹帧数
+        self.total_frames = self._get_trajectory_num()  # 轨迹帧数  247
         self.trajectory_list = self.make_trajectory()   # 轨迹列表，包含每一帧的位置信息和姿态信息
-        self.progress_list = self.get_progress_list()   # 进度列表
+        self.progress_list = self.get_progress_list()   # 进度列表 [1.0, 0.9989255170385136, ...]
         self.candidate_target_pose = self.get_candidate_target_pose()   # 候选目标姿态
 
     # 获取与当前任务相关的轨迹帧数
@@ -63,17 +66,22 @@ class TrajectoryInfoParser:
     def get_progress(self, index) -> float:
         return self.progress_list[index]
 
+    # 计算轨迹的方向
     def _get_trajectory_direction(self, bias_threshold=30) -> str:
         direction = None
+        # 从轨迹的起始点到结束点的偏航角差
         delta_yaw = self.get_safe_yaw(self.trajectory_list[-1].yaw - self.trajectory_list[0].yaw)
+        # delta_yaw 在 60 ～ 120 范围内
         if 90 - bias_threshold < abs(delta_yaw) < 90 + bias_threshold:
             direction = "right" if delta_yaw > 0 else "left"
         else:
             raise ValueError(f"Don't support trajectory rotation angle '{delta_yaw}'!")
         return direction
 
+    # 筛选候选目标姿态
     def get_candidate_target_pose(self) -> List[CustomizePose]:
         candidate_target_pose = []
+        # 遍历轨迹列表，将与最后一个轨迹点的偏航角相差小于 1 弧度的点都当作目标点
         for trajectory_item in self.trajectory_list:
             if abs(trajectory_item.yaw - self.trajectory_list[-1].yaw < 1):
                 candidate_target_pose.append(trajectory_item)
@@ -118,11 +126,14 @@ class TrajectoryInfoParser:
         # distance_list 的每个元素表示从起始位置到当前帧的总距离
         for index in range(1, self.total_frames):
             distance_list.append(distance_list[-1] + self._get_backwark_delta_distance(index))
+        # 进度列表，1 - 当前距离/总距离
         progress_list = 1 - np.array(distance_list) / distance_list[-1]
+        # 如果轨迹方向是 "left"，则将进度列表取反 ？？？？？
         if self._get_trajectory_direction() == "left":
             progress_list = -progress_list
         return progress_list.tolist()
     
+    # 计算在给定索引处的轨迹点与前一个轨迹点之间的直线距离
     def _get_backwark_delta_distance(self, index) -> float:
         delta_y = self.get_trajectory_point(index).y - self.get_trajectory_point(index - 1).y
         delta_x = self.get_trajectory_point(index).x - self.get_trajectory_point(index - 1).x
