@@ -18,17 +18,19 @@ class ParkingModelReal(nn.Module):
 
         # 模型组件初始化
         # Camera Encoder
-        self.lss_bev_model = LssBevModel(self.cfg) # 结合了 EfficientNet 作为主干网络和 DeepLabHead 结构来提取多尺度特征。。通过上采样和特征拼接，该模型能够有效地处理图像分割任务。
-        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel) # 基于 ResNet 的设计，具体使用了基本块（BasicBlock）来构建网络  
+        self.lss_bev_model = LssBevModel(self.cfg) # 结合了 EfficientNet 作为主干网络和 DeepLabHead 结构来提取多尺度特征。通过上采样和特征拼接，该模型能够有效地处理图像分割任务。
+        self.image_res_encoder = BevEncoder(in_channel=self.cfg.bev_encoder_in_channel) # 64 基于 ResNet 的设计，具体使用了基本块（BasicBlock）来构建网络  
 
         # Target Encoder
         self.target_res_encoder = BevEncoder(in_channel=1)
 
         # BEV Query 
         # BEV 查询模块，包含 TransformerDecoder 组件
+        # 利用 Ftarget 作为查询，相机特征 Fcam 作为键和值，并采用注意力机制，得到融合特征 Ffuse
         self.bev_query = BevQuery(self.cfg)
 
         # Trajectory Decoder
+        # BEV 特征用作键和值，而序列化序列用作查询，使用 Transformer 解码器以自回归方式生成轨迹点
         self.trajectory_decoder = self.get_trajectory_decoder()
 
     def forward(self, data):

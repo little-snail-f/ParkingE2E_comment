@@ -79,9 +79,9 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
                 # 获取轨迹点和变换矩阵
                 ego_pose = traje_info_obj.get_trajectory_point(ego_index)
                 world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix() # [4, 4]
-                # create predict point
+                # create predict point 预测点
                 predict_point_token_gt, predict_point_gt = self.create_predict_point_gt(traje_info_obj, ego_index, world2ego_mat)
-                # create parking goal
+                # create parking goal 停车目标
                 fuzzy_parking_goal, parking_goal = self.create_parking_goal_gt(traje_info_obj, world2ego_mat)
                 # create image_path 图像路径
                 image_path = self.create_image_path_gt(task_path, ego_index)
@@ -121,9 +121,9 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
     # 基于给定的轨迹信息和变换矩阵，生成预测点和相应的标记（token）
     def create_predict_point_gt(self, traje_info_obj: TrajectoryInfoParser, ego_index: int, world2ego_mat: np.array) -> List[int]:
         predict_point, predict_point_token = [], []
-        # 遍历 30 个的自回归预测点
+        # 遍历 30 个的自回归预测点(步幅为 3)
         for predict_index in range(self.cfg.autoregressive_points):  # predict iteration 30
-            # 当前预测点的索引？？？ 3，6，9，12，...
+            # 当前预测点的索引？？？ 3，6，9，12，15，...，90
             predict_stride_index = self.get_clip_stride_index(predict_index = predict_index, 
                                                                 start_index=ego_index,  # 当前真实轨迹点索引
                                                                 max_index=traje_info_obj.total_frames - 1, 
@@ -146,6 +146,8 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             if predict_stride_index == traje_info_obj.total_frames - 1 or predict_index == self.cfg.autoregressive_points - 1:
                 break
 
+        # python 列表推导式，将嵌套列表 predict_point 展平为一个一维列表 predict_point_gt
+        # 首先遍历 predict_point 中的每个子列表 sublist，然后遍历每个子列表中的每个元素 item
         predict_point_gt = [item for sublist in predict_point for item in sublist]
         append_pad_num = self.cfg.autoregressive_points * self.cfg.item_number - len(predict_point_gt)
         assert append_pad_num >= 0
@@ -183,7 +185,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
     def get_all_tasks(self):
         all_tasks = []
         train_data_dir = os.path.join(self.root_dir, self.cfg.training_dir) # './e2e_dataset/train'
-        val_data_dir = os.path.join(self.root_dir, self.cfg.validation_dir)
+        val_data_dir = os.path.join(self.root_dir, self.cfg.validation_dir) # './e2e_dataset/val'
         # 根据配置和当前训练状态构建训练和验证数据的目录路径
         data_dir = train_data_dir if self.is_train == 1 else val_data_dir
         # 遍历指定数据目录中的所有场景中的所有任务

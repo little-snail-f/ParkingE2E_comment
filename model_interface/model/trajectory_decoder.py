@@ -17,7 +17,7 @@ class TrajectoryDecoder(nn.Module):
         self.embedding = nn.Embedding(self.cfg.token_nums + self.cfg.append_token, self.cfg.tf_de_dim)
         self.pos_drop = nn.Dropout(self.cfg.tf_de_dropout) # Dropout(p=0.05, inplace=False)
 
-        item_cnt = self.cfg.autoregressive_points
+        item_cnt = self.cfg.autoregressive_points  # 自回归点的数量：30
 
         # 位置嵌入(随机生成，训练更新)          批次大小，位置嵌入的长度: 2 * 30 + 2(开始标记和结束标记)，嵌入向量维度   将生成的随机数乘以 0.02，缩小初始化值的范围，避免梯度爆炸或消失
         self.pos_embed = nn.Parameter(torch.randn(1, self.cfg.item_number*item_cnt + 2, self.cfg.tf_de_dim) * .02)
