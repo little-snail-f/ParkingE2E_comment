@@ -51,10 +51,13 @@ class ParkingTrainingModuleReal(pl.LightningModule):
 
         return val_loss
 
+    # 配置优化器
     def configure_optimizers(self):
+        # 创建优化器(Adam)
         optimizer = torch.optim.Adam(self.parameters(),
-                                     lr=self.cfg.learning_rate,
-                                     weight_decay=self.cfg.weight_decay)
+                                     lr=self.cfg.learning_rate,   # 学习率 0.0001
+                                     weight_decay=self.cfg.weight_decay)    # 权重衰减（L2 正则化），用于防止过拟合
+        # 创建学习率调度器(余弦退火学习率调度器) ———— 逐渐降低学习率                            一个周期的最大迭代次数？？
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer=optimizer, T_max=self.cfg.epochs)
         return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
 

@@ -19,6 +19,7 @@ class ParkingDataloaderModule(pl.LightningDataModule):
         self.train_loader = None
         self.val_loader = None
 
+    # 设置数据加载器(训练和验证)
     def setup(self, stage: str):
         # 获取数据模块类 return ParkingDataModuleReal
         ParkingDataModule = get_parking_data(data_mode="real_scene")
@@ -28,7 +29,7 @@ class ParkingDataloaderModule(pl.LightningDataModule):
                                        batch_size=self.cfg.batch_size,      # 1
                                        shuffle=True,                        # 在每个 epoch 开始时打乱数据，以提高训练效果
                                        num_workers=self.cfg.num_workers,    # 8，工作线程数，用于并行加载数据
-                                       pin_memory=True,
+                                       pin_memory=True,                     # 将数据加载到固定内存中，以提高 GPU 加载速度
                                        worker_init_fn=self.seed_worker,
                                        drop_last=True)                      # 如果数据集的大小不能被批量大小整除，则丢弃最后一个不完整的批次
         self.val_loader = DataLoader(dataset=ParkingDataModule(config=self.cfg, is_train=0),

@@ -74,14 +74,14 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             self.intrinsic[task_index] = image_info_obj.intrinsic
             self.extrinsic[task_index] = image_info_obj.extrinsic
 
-            # 轨迹点迭代
+            # 轨迹点迭代，获取当前轨迹点及对应的预测点、图像、goal
             for ego_index in range(0, traje_info_obj.total_frames):  # ego iteration
                 # 获取轨迹点和变换矩阵
                 ego_pose = traje_info_obj.get_trajectory_point(ego_index)
-                world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix()
-                # create predict point
+                world2ego_mat = ego_pose.get_homogeneous_transformation().get_inverse_matrix() # [4, 4]
+                # create predict point 预测点(根据训练数据生成，用于训练)
                 predict_point_token_gt, predict_point_gt = self.create_predict_point_gt(traje_info_obj, ego_index, world2ego_mat)
-                # create parking goal
+                # create parking goal 停车目标(模糊 goal 和轨迹的最后一个点)
                 fuzzy_parking_goal, parking_goal = self.create_parking_goal_gt(traje_info_obj, world2ego_mat)
                 # create image_path 图像路径
                 image_path = self.create_image_path_gt(task_path, ego_index)
@@ -95,7 +95,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
                     self.images[image_tag].append(image_path[image_tag])
                 self.task_index_list.append(task_index)
 
-        # 
+        # 将存储的地面真值数据转换为 NumPy 数组
         self.format_transform()
 
     def process_camera(self, index):
@@ -119,7 +119,9 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
     def create_predict_point_gt(self, traje_info_obj: TrajectoryInfoParser, ego_index: int, world2ego_mat: np.array) -> List[int]:
         predict_point, predict_point_token = [], []
-        for predict_index in range(self.cfg.autoregressive_points):  # predict iteration
+        # 遍历 30 个的自回归预测点(步幅为 3)
+        for predict_index in range(self.cfg.autoregressive_points):  # predict iteration 30
+            # 当前预测点的索引？？？ 3，6，9，12，15，...，90
             predict_stride_index = self.get_clip_stride_index(predict_index = predict_index, 
                                                                 start_index=ego_index, 
                                                                 max_index=traje_info_obj.total_frames - 1, 
@@ -136,11 +138,15 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
             if predict_stride_index == traje_info_obj.total_frames - 1 or predict_index == self.cfg.autoregressive_points - 1:
                 break
 
+        # python 列表推导式，将嵌套列表 predict_point 展平为一个一维列表 predict_point_gt
+        # 首先遍历 predict_point 中的每个子列表 sublist，然后遍历每个子列表中的每个元素 item
         predict_point_gt = [item for sublist in predict_point for item in sublist]
+        # 填充预测点(使用最后两个元素进行填充)
         append_pad_num = self.cfg.autoregressive_points * self.cfg.item_number - len(predict_point_gt)
         assert append_pad_num >= 0
         predict_point_gt = predict_point_gt + (append_pad_num // 2) * [predict_point_gt[-2], predict_point_gt[-1]]
 
+        # 展平 token 列表，添加开始、结束和填充标记
         predict_point_token_gt = [item for sublist in predict_point_token for item in sublist]
         predict_point_token_gt.insert(0, self.BOS_token)
         predict_point_token_gt.append(self.EOS_token)
@@ -150,12 +156,15 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
         predict_point_token_gt = predict_point_token_gt + append_pad_num * [self.PAD_token]
         return predict_point_token_gt, predict_point_gt
 
+    # 生成停车目标的模糊位置和精确位置
     def create_parking_goal_gt(self, traje_info_obj: TrajectoryInfoParser, world2ego_mat: np.array):
+        # 获取一个随机的候选停车目标位置并转换到自车坐标系
         candidate_target_pose_in_world = traje_info_obj.get_random_candidate_target_pose()
         candidate_target_pose_in_ego = candidate_target_pose_in_world.get_pose_in_ego(world2ego_mat)
         fuzzy_parking_goal = [candidate_target_pose_in_ego.x, candidate_target_pose_in_ego.y]
 
-        target_pose_in_world = traje_info_obj.get_precise_target_pose()
+        # 获取精确停车目标位置并转换到自车坐标系
+        target_pose_in_world = traje_info_obj.get_precise_target_pose()  # 轨迹的最后一个位置
         target_pose_in_ego = target_pose_in_world.get_pose_in_ego(world2ego_mat)
         parking_goal = [target_pose_in_ego.x, target_pose_in_ego.y]
 
@@ -163,7 +172,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
 
     def create_image_path_gt(self, task_path, ego_index):
-        filename = f"{str(ego_index).zfill(4)}.png"
+        filename = f"{str(ego_index).zfill(4)}.png" # 生成格式化的文件名，确保文件名的数字部分总是由 4 位数字组成，并以 .png 作为文件扩展名
         image_path = {}
         for image_tag in self.images_tag:
             image_path[image_tag] = os.path.join(task_path, image_tag, filename)
@@ -171,8 +180,9 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
 
     def get_all_tasks(self):
         all_tasks = []
-        train_data_dir = os.path.join(self.root_dir, self.cfg.training_dir)
-        val_data_dir = os.path.join(self.root_dir, self.cfg.validation_dir)
+        train_data_dir = os.path.join(self.root_dir, self.cfg.training_dir) # './e2e_dataset/train'
+        val_data_dir = os.path.join(self.root_dir, self.cfg.validation_dir) # './e2e_dataset/val'
+        # 根据配置和当前训练状态构建训练和验证数据的目录路径
         data_dir = train_data_dir if self.is_train == 1 else val_data_dir
         for scene_item in os.listdir(data_dir):
             scene_path = os.path.join(data_dir, scene_item)

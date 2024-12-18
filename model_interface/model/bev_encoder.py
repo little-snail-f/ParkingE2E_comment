@@ -107,7 +107,7 @@ class BevQuery(nn.Module):
 
         # 将位置嵌入添加到目标特征和图像特征中
         tgt_feature = tgt_feature + self.pos_embed
-        img_feature = tgt_feature + self.pos_embed
+        img_feature = img_feature + self.pos_embed
 
         # 调用 transformer 解码器
         # 将目标特征作为输入，图像特征作为记忆（memory），生成融合后的 BEV 特征
