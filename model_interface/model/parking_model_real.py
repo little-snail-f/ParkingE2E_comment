@@ -32,12 +32,12 @@ class ParkingModelReal(nn.Module):
         # Trajectory Decoder
         # BEV 特征用作键和值，而序列化序列用作查询，使用 Transformer 解码器以自回归方式生成轨迹点
         self.trajectory_decoder = self.get_trajectory_decoder()
-
+    # 模型前向传播
     def forward(self, data):
-        # Encoder
+        # Encoder  提取 BEV 特征、生成深度预测和 BEV 目标
         bev_feature, pred_depth, bev_target = self.encoder(data, mode="train")
 
-        # Decoder
+        # Decoder  预测轨迹点
         pred_traj_point = self.trajectory_decoder(bev_feature, data['gt_traj_point_token'].cuda())
 
         return pred_traj_point, pred_depth, bev_target

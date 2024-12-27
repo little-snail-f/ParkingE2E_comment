@@ -23,16 +23,16 @@ class ParkingTrainingModuleReal(pl.LightningModule):
         # 创建泊车模型的实例
         self.parking_model = ParkingModelReal(self.cfg)
 
-
+    # 核心训练逻辑（最终调用的 training_step），用于执行前向传播、计算损失
     def training_step(self, batch, batch_idx):
         loss_dict = {}
-        pred_traj_point, _, _ = self.parking_model(batch)
+        pred_traj_point, _, _ = self.parking_model(batch) # 将输入数据 batch 传入模型，预测轨迹点
 
         train_loss = self.traj_point_loss_func(pred_traj_point, batch)        
 
         loss_dict.update({"train_loss": train_loss})
 
-        self.log_dict(loss_dict)
+        self.log_dict(loss_dict) # 记录损失日志
 
         return train_loss
 

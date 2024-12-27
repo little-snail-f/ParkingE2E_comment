@@ -153,10 +153,10 @@ class LssBevModel(nn.Module):
         return nn.Parameter(frustum, requires_grad=False)
 
     # 根据相机的内参和外参计算视锥体中的点在世界坐标系中的位置
-    def get_geometry(self, intrinsics, extrinsics):
+    def get_geometry(self, intrinsics, extrinsics): # 内参：将像素坐标转换为相机坐标  外参：将相机坐标转换为世界坐标
         # 外参的逆，以便将世界坐标系转换为相机坐标系
         extrinsics = torch.inverse(extrinsics).cuda()
-        rotation, translation = extrinsics[..., :3, :3], extrinsics[..., :3, 3]
+        rotation, translation = extrinsics[..., :3, :3], extrinsics[..., :3, 3] # 提取旋转和平移向量
         # b:批次大小 n:每个批次中的相机数量
         b, n, _ = translation.shape
 
@@ -164,10 +164,10 @@ class LssBevModel(nn.Module):
         points = self.frustum.unsqueeze(0).unsqueeze(0).unsqueeze(-1)
         points = torch.cat((points[:, :, :, :, :, :2] * points[:, :, :, :, :, 2:3],
                             points[:, :, :, :, :, 2:3]), 5)
-        
+        # 通过内参矩阵的逆和旋转矩阵，将点从像素坐标变换到相机坐标
         combine_transform = rotation.matmul(torch.inverse(intrinsics)).cuda()
         points = combine_transform.view(b, n, 1, 1, 1, 3, 3).matmul(points).squeeze(-1)
-        points += translation.view(b, n, 1, 1, 1, 3)
+        points += translation.view(b, n, 1, 1, 1, 3) # 通过平移向量，将点从相机坐标系变换到世界坐标系
 
         # 返回计算得到的三维点，表示视锥体中的每个点在世界坐标系中的位置
         return points
@@ -177,18 +177,18 @@ class LssBevModel(nn.Module):
         b, n, c, h, w = images.shape    # (1, 4, C, H, W) （批次大小，每个批次中的图像数量，图像通道数，高度，宽度）
         # 将所有图像合并为一个批次
         images = images.view(b * n, c, h, w)
-        # 提取的特征，深度信息
+        # 提取图像特征和深度信息
         x, depth = self.cam_encoder(images)
-
+        # 如果启用了深度分布处理，使用深度分布处理特征
         depth_prob = None
         if self.cfg.use_depth_distribution:
-            depth_prob = depth.softmax(dim=1)
-            x = depth_prob.unsqueeze(1) * x.unsqueeze(2)
+            depth_prob = depth.softmax(dim=1)  # (b * n, depth_channel, h, w)
+            x = depth_prob.unsqueeze(1) * x.unsqueeze(2) # (b * n, c, depth_channel, h, w)
         else:
-            x = x.unsqueeze(2).repeat(1, 1, self.depth_channel, 1, 1)
-
-        x = x.view(b, n, *x.shape[1:])
-        x = x.permute(0, 1, 3, 4, 5, 2)
+            x = x.unsqueeze(2).repeat(1, 1, self.depth_channel, 1, 1) # (b * n, c, h, w) -> (b * n, c, depth_channel, h, w)
+        # 恢复维度
+        x = x.view(b, n, *x.shape[1:])      # (b * n, c, depth_channel, h, w)
+        x = x.permute(0, 1, 3, 4, 5, 2)     # (b, n, c, depth_channel, h, w)
         return x, depth_prob
 
     def proj_bev_feature(self, geom, image_feature):
@@ -228,14 +228,14 @@ class LssBevModel(nn.Module):
 
     # 计算 BEV 特征和预测深度
     def calc_bev_feature(self, images, intrinsics, extrinsics):
-        # 计算视锥体中的点在世界坐标系中的位置
+        # 计算视锥体中的点在世界坐标系中的位置，可以将图像数据从相机坐标系映射到世界坐标系
         geom = self.get_geometry(intrinsics, extrinsics)
         # 
-        x, pred_depth = self.encoder_forward(images)
-        bev_feature = self.proj_bev_feature(geom, x)
+        x, pred_depth = self.encoder_forward(images) # 提取图像特征（x）并预测深度
+        bev_feature = self.proj_bev_feature(geom, x) # 将特征投影到 BEV 表示
         return bev_feature, pred_depth
 
-    # 根据输入的图像、内参和外参，计算 BEV 特征和预测深度
+    # LssBevModel的前向传播函数  根据输入的图像、内参和外参，计算 BEV 特征和预测深度
     def forward(self, images, intrinsics, extrinsics):
         bev_feature, pred_depth = self.calc_bev_feature(images, intrinsics, extrinsics)
         return bev_feature.squeeze(1), pred_depth
@@ -314,32 +314,32 @@ class CamEncoder(nn.Module):
         x = self.backbone._swish(self.backbone._bn0(self.backbone._conv_stem(x)))
         prev_x = x
 
-        # Blocks
+        # Blocks  遍历 EfficientNet 的所有块（_blocks），逐层提取特征
         for idx, block in enumerate(self.backbone._blocks):
-            drop_connect_rate = self.backbone._global_params.drop_connect_rate
+            drop_connect_rate = self.backbone._global_params.drop_connect_rate # 在训练时随机丢弃神经元连接，增强正则化效果
             if drop_connect_rate:
-                drop_connect_rate *= float(idx) / len(self.backbone._blocks)
+                drop_connect_rate *= float(idx) / len(self.backbone._blocks) # 越深的层，丢弃连接的概率越高
             x = block(x, drop_connect_rate=drop_connect_rate)
-            if prev_x.size(2) > x.size(2):
+            if prev_x.size(2) > x.size(2): # 当特征图尺寸发生降采样时，将之前的特征图存入 endpoints
                 endpoints['reduction_{}'.format(len(endpoints) + 1)] = prev_x
             prev_x = x
-
+            # 控制网络中提取的特征层
             if self.downsample == 8:
                 if self.version == 'b0' and idx == 10:
                     break
                 if self.version == 'b4' and idx == 21:
                     break
 
-        # Head
+        # Head 将最后一层特征图存入 endpoints，用于解码和深度计算
         endpoints['reduction_{}'.format(len(endpoints) + 1)] = x
-
+        # 多尺度特征融合
         index = np.log2(self.downsample).astype(np.int)
-        input_1 = endpoints['reduction_{}'.format(index + 1)]
-        input_2 = endpoints['reduction_{}'.format(index)]
+        input_1 = endpoints['reduction_{}'.format(index + 1)]  # 更高分辨率的特征图
+        input_2 = endpoints['reduction_{}'.format(index)]      # 更低分辨率的特征图
 
         feature = self.feature_layer_1(input_1)
         feature = self.feature_layer_2(feature, input_2)
-
+        # 如果启用了深度分布，使用 depth_layer_1 和 depth_layer_2 结合多尺度特征，计算深度分布
         if self.use_depth_distribution:
             depth = self.depth_layer_1(input_1)
             depth = self.depth_layer_2(depth, input_2)

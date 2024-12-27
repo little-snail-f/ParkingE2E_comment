@@ -60,6 +60,7 @@ class ParkingDataModuleReal(torch.utils.data.Dataset):
         return data
 
     # 生成地面真值（ground truth）数据，包括轨迹点、目标点和图像路径等
+    # 这段代码运行速度很慢
     def create_gt_data(self):
         # 获取所有任务的列表
         all_tasks = self.get_all_tasks()
